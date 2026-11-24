@@ -2,7 +2,7 @@
 
 **Versión inicial 0.1.0**
 
-Cruce es la app Flutter para Android del proyecto Semáforo Inteligente de INACAP Osorno. Permite consultar el estado de los semáforos y los conteos del cruce de la maqueta 3D (`maqueta-01`), revisar estadísticas de tránsito y reportar incidencias.
+Cruce es la app Flutter para Android del proyecto Semáforo Inteligente. Permite consultar el estado de los semáforos y los conteos del cruce de la maqueta 3D (`maqueta-01`), revisar estadísticas de tránsito y reportar incidencias.
 
 ## Cómo se conectan los tres repositorios
 
