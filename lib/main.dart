@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/data/latest.dart' as tz;
 
@@ -15,12 +16,18 @@ import 'monitor.dart';
 import 'statistics.dart';
 import 'traffic_data.dart';
 
+const _nightModeKey = 'cruce.night_mode';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
   await initializeDateFormatting('es_CL');
+  SharedPreferences? preferences;
+  try {
+    preferences = await SharedPreferences.getInstance();
+  } catch (_) {}
   if (demoMode) {
-    runApp(const CruceApp(showDemo: true));
+    runApp(CruceApp(showDemo: true, preferences: preferences));
     return;
   }
   try {
@@ -48,23 +55,45 @@ Future<void> main() async {
       connection.close();
       rethrow;
     }
-    runApp(CruceApp(client: Supabase.instance.client));
+    runApp(
+      CruceApp(client: Supabase.instance.client, preferences: preferences),
+    );
   } catch (_) {
-    runApp(const CruceApp(startupError: true));
+    runApp(CruceApp(startupError: true, preferences: preferences));
   }
 }
 
-class CruceApp extends StatelessWidget {
+class CruceApp extends StatefulWidget {
   const CruceApp({
     super.key,
     this.client,
     this.showDemo = false,
     this.startupError = false,
+    this.preferences,
   });
 
   final SupabaseClient? client;
   final bool showDemo;
   final bool startupError;
+  final SharedPreferences? preferences;
+
+  @override
+  State<CruceApp> createState() => _CruceAppState();
+}
+
+class _CruceAppState extends State<CruceApp> {
+  late bool _nightMode = widget.preferences?.get(_nightModeKey) == true;
+  final _lightTheme = appTheme(CrucePalette.light);
+  final _nightTheme = appTheme(CrucePalette.night);
+
+  Future<bool> setNightMode(bool enabled) async {
+    setState(() => _nightMode = enabled);
+    try {
+      return await widget.preferences?.setBool(_nightModeKey, enabled) ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -73,8 +102,14 @@ class CruceApp extends StatelessWidget {
     locale: const Locale('es', 'CL'),
     supportedLocales: const [Locale('es', 'CL')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
-    theme: appTheme(),
-    home: startupError
+    theme: _lightTheme,
+    darkTheme: _nightTheme,
+    themeMode: _nightMode ? ThemeMode.dark : ThemeMode.light,
+    builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+      value: Theme.of(context).appBarTheme.systemOverlayStyle!,
+      child: child!,
+    ),
+    home: widget.startupError
         ? const Scaffold(
             body: SafeArea(
               child: PageBody(
@@ -88,7 +123,7 @@ class CruceApp extends StatelessWidget {
               ),
             ),
           )
-        : _SessionGate(client: client, showDemo: showDemo),
+        : _SessionGate(client: widget.client, showDemo: widget.showDemo),
   );
 }
 
@@ -403,7 +438,11 @@ class _WelcomeState extends State<_Welcome> {
           const SizedBox(height: 11),
           Text(
             'Datos de ejemplo',
-            style: type(12, FontWeight.w700, color: muted),
+            style: type(
+              12,
+              FontWeight.w700,
+              color: CrucePalette.of(context).secondary,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -424,15 +463,7 @@ class _WelcomeState extends State<_Welcome> {
                           children: [
                             Expanded(flex: 4, child: form),
                             const SizedBox(width: 56),
-                            Expanded(
-                              flex: 6,
-                              child: CrossingPanel(
-                                state: null,
-                                status: 'Vista del cruce',
-                                wide: true,
-                                lastAt: null,
-                              ),
-                            ),
+                            Expanded(flex: 6, child: const CrossingPreview()),
                           ],
                         )
                       : form,
@@ -476,7 +507,6 @@ class _Workspace extends StatefulWidget {
 
 class _WorkspaceState extends State<_Workspace> {
   _Destination _selected = _Destination.monitor;
-  MonitorLight _monitorLight = MonitorLight.at(DateTime.now());
   final _visited = {_Destination.monitor};
 
   void _select(_Destination destination) => setState(() {
@@ -488,8 +518,6 @@ class _WorkspaceState extends State<_Workspace> {
     _Destination.monitor => MonitorPage(
       repository: widget.repository,
       role: widget.role,
-      light: _monitorLight,
-      onLightChanged: (light) => setState(() => _monitorLight = light),
     ),
     _Destination.statistics => StatisticsPage(repository: widget.repository),
     _Destination.incidents => IncidentsPage(
@@ -507,6 +535,7 @@ class _WorkspaceState extends State<_Workspace> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = CrucePalette.of(context);
     final destinations = _Destination.values
         .where(
           (destination) =>
@@ -535,9 +564,9 @@ class _WorkspaceState extends State<_Workspace> {
               Container(
                 width: 191,
                 height: double.infinity,
-                decoration: const BoxDecoration(
-                  color: surface,
-                  border: Border(right: BorderSide(color: line)),
+                decoration: BoxDecoration(
+                  color: palette.panel,
+                  border: Border(right: BorderSide(color: palette.border)),
                 ),
                 padding: const EdgeInsets.fromLTRB(13, 19, 13, 15),
                 child: Column(
@@ -553,7 +582,7 @@ class _WorkspaceState extends State<_Workspace> {
                         selected: _selected == destination,
                         child: Material(
                           color: _selected == destination
-                              ? const Color(0xFFE6EEDF)
+                              ? palette.selection
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(11),
                           child: ListTile(
@@ -565,7 +594,9 @@ class _WorkspaceState extends State<_Workspace> {
                             ),
                             leading: Icon(
                               destination.icon,
-                              color: _selected == destination ? moss : muted,
+                              color: _selected == destination
+                                  ? palette.accent
+                                  : palette.secondary,
                               size: 20,
                             ),
                             title: Text(
@@ -573,7 +604,9 @@ class _WorkspaceState extends State<_Workspace> {
                               style: type(
                                 13,
                                 FontWeight.w800,
-                                color: _selected == destination ? moss : ink,
+                                color: _selected == destination
+                                    ? palette.accent
+                                    : palette.foreground,
                               ),
                             ),
                             onTap: () => _select(destination),
@@ -597,33 +630,9 @@ class _WorkspaceState extends State<_Workspace> {
         ),
       );
     }
-    final monitorLight = _selected == _Destination.monitor
-        ? _monitorLight
-        : null;
-    final foreground = monitorLight?.foreground ?? ink;
-    final navigation = NavigationBar(
-      backgroundColor: monitorLight?.panel,
-      indicatorColor: monitorLight?.accent.withValues(alpha: .18),
-      selectedIndex: destinations.indexOf(_selected),
-      onDestinationSelected: (index) => _select(destinations[index]),
-      destinations: [
-        for (final destination in destinations)
-          NavigationDestination(
-            icon: Icon(destination.icon, color: monitorLight?.secondary),
-            selectedIcon: Icon(destination.icon, color: monitorLight?.accent),
-            label: destination.label,
-          ),
-      ],
-    );
     return Scaffold(
-      backgroundColor: monitorLight?.background,
       appBar: AppBar(
-        backgroundColor: monitorLight?.background,
-        foregroundColor: foreground,
-        systemOverlayStyle: monitorLight == MonitorLight.night
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
-        title: Brand(color: foreground),
+        title: const Brand(),
         actions: [
           if (demo)
             const Padding(
@@ -633,27 +642,23 @@ class _WorkspaceState extends State<_Workspace> {
         ],
       ),
       body: SafeArea(top: false, bottom: false, child: content),
-      bottomNavigationBar: monitorLight == null
-          ? DecoratedBox(
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: line)),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: palette.panel,
+          border: Border(top: BorderSide(color: palette.border)),
+        ),
+        child: NavigationBar(
+          selectedIndex: destinations.indexOf(_selected),
+          onDestinationSelected: (index) => _select(destinations[index]),
+          destinations: [
+            for (final destination in destinations)
+              NavigationDestination(
+                icon: Icon(destination.icon),
+                label: destination.label,
               ),
-              child: navigation,
-            )
-          : DecoratedBox(
-              decoration: BoxDecoration(
-                color: monitorLight.panel,
-                border: Border(top: BorderSide(color: monitorLight.border)),
-              ),
-              child: NavigationBarTheme(
-                data: NavigationBarTheme.of(context).copyWith(
-                  labelTextStyle: WidgetStatePropertyAll(
-                    type(11, FontWeight.w700, color: foreground),
-                  ),
-                ),
-                child: navigation,
-              ),
-            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -706,6 +711,7 @@ class _AccountState extends State<_Account> {
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Eliminar cuenta'),
@@ -740,13 +746,21 @@ class _AccountState extends State<_Account> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.account_circle_outlined, color: moss, size: 31),
+            Icon(
+              Icons.account_circle_outlined,
+              color: CrucePalette.of(context).accent,
+              size: 31,
+            ),
             const SizedBox(height: 9),
             SectionTitle(widget.user?.email ?? 'Sesión de demostración'),
             const SizedBox(height: 5),
             Text(
               widget.role.label,
-              style: type(13, FontWeight.w700, color: muted),
+              style: type(
+                13,
+                FontWeight.w700,
+                color: CrucePalette.of(context).secondary,
+              ),
             ),
             const SizedBox(height: 17),
             OutlinedButton.icon(
@@ -763,6 +777,29 @@ class _AccountState extends State<_Account> {
               ),
             ),
           ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      Panel(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        child: SwitchListTile(
+          secondary: Icon(
+            Icons.nightlight_outlined,
+            color: CrucePalette.of(context).accent,
+          ),
+          title: const Text('Modo noche'),
+          value: CrucePalette.of(context).isNight,
+          onChanged: (enabled) async {
+            final app = context.findAncestorStateOfType<_CruceAppState>()!;
+            final saved = await app.setNightMode(enabled);
+            if (!saved && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No se pudo guardar la apariencia.'),
+                ),
+              );
+            }
+          },
         ),
       ),
       if (widget.repository != null) ...[

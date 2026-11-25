@@ -1,28 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'traffic_data.dart';
 
-const paper = Color(0xFFF2F4EE);
-const surface = Color(0xFFFCFDF8);
-const ink = Color(0xFF17231D);
-const muted = Color(0xFF56635B);
-const line = Color(0xFFDCE3D9);
-const moss = Color(0xFF1B563B);
-const lime = Color(0xFFD8F477);
 const night = Color(0xFF182520);
-const mapText = Color(0xFFB9CAC0);
 const signalGreen = Color(0xFFC4F36E);
 const signalYellow = Color(0xFFFFD474);
 const signalRed = Color(0xFFFF9689);
 
-enum MonitorLight {
-  day(
-    background: Color(0xFFE4EAE0),
-    foreground: Color(0xFF172C23),
-    secondary: Color(0xFF40574B),
-    panel: Color(0xFFF5F8F0),
-    border: Color(0xFFBCCDBF),
-    accent: Color(0xFF286143),
+enum CrucePalette {
+  light(
+    background: Colors.white,
+    foreground: Color(0xFF17231D),
+    secondary: Color(0xFF56635B),
+    panel: Color(0xFFFCFDFB),
+    border: Color(0xFFDCE3D9),
+    accent: Color(0xFF1B563B),
   ),
   night(
     background: Color(0xFF101D19),
@@ -33,7 +26,7 @@ enum MonitorLight {
     accent: Color(0xFFD8F477),
   );
 
-  const MonitorLight({
+  const CrucePalette({
     required this.background,
     required this.foreground,
     required this.secondary,
@@ -49,38 +42,73 @@ enum MonitorLight {
   final Color border;
   final Color accent;
 
-  static MonitorLight at(DateTime time) {
-    final hour = chileTime(time).hour;
-    return hour >= 7 && hour < 20 ? day : night;
-  }
+  bool get isNight => this == night;
+  Color get selection => isNight
+      ? Color.alphaBlend(accent.withValues(alpha: .18), panel)
+      : const Color(0xFFE3EDDB);
+
+  static CrucePalette of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? night : light;
 }
 
-ThemeData appTheme() {
-  final colors = ColorScheme.fromSeed(seedColor: moss).copyWith(
-    primary: moss,
-    onPrimary: Colors.white,
-    surface: surface,
-    onSurface: ink,
-    outline: line,
-    error: const Color(0xFFA1262F),
-  );
+ThemeData appTheme(CrucePalette palette) {
+  final dark = palette.isNight;
+  final colors =
+      ColorScheme.fromSeed(
+        seedColor: CrucePalette.light.accent,
+        brightness: dark ? Brightness.dark : Brightness.light,
+      ).copyWith(
+        primary: palette.accent,
+        onPrimary: dark ? palette.background : Colors.white,
+        surface: palette.panel,
+        surfaceContainer: palette.panel,
+        surfaceContainerHigh: dark
+            ? const Color(0xFF2C4136)
+            : const Color(0xFFF1F5F0),
+        onSurface: palette.foreground,
+        onSurfaceVariant: palette.secondary,
+        outline: palette.secondary,
+        outlineVariant: palette.border,
+        secondaryContainer: palette.selection,
+        onSecondaryContainer: palette.foreground,
+        error: dark ? signalRed : const Color(0xFFA1262F),
+        onError: dark ? palette.background : Colors.white,
+      );
   return ThemeData(
     useMaterial3: true,
     colorScheme: colors,
-    scaffoldBackgroundColor: paper,
+    scaffoldBackgroundColor: palette.background,
     fontFamily: 'Manrope',
-    dividerColor: line,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: paper,
-      foregroundColor: ink,
+    dividerColor: palette.border,
+    appBarTheme: AppBarTheme(
+      backgroundColor: palette.background,
+      foregroundColor: palette.foreground,
       surfaceTintColor: Colors.transparent,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: palette.background,
+        systemNavigationBarIconBrightness: dark
+            ? Brightness.light
+            : Brightness.dark,
+      ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: surface,
-      indicatorColor: const Color(0xFFE3EDDB),
+      backgroundColor: palette.panel,
+      indicatorColor: palette.selection,
       elevation: 0,
       height: 68,
-      labelTextStyle: WidgetStatePropertyAll(type(11, FontWeight.w700)),
+      labelTextStyle: WidgetStatePropertyAll(
+        type(11, FontWeight.w700, color: palette.foreground),
+      ),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected)
+              ? palette.accent
+              : palette.secondary,
+        ),
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -92,11 +120,11 @@ ThemeData appTheme() {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: surface,
+      fillColor: palette.panel,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: line),
+        borderSide: BorderSide(color: palette.border),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
     ),
@@ -106,7 +134,7 @@ ThemeData appTheme() {
 TextStyle type(
   double size,
   FontWeight weight, {
-  Color color = ink,
+  Color? color,
   double? spacing,
   double? height,
 }) => TextStyle(
@@ -118,7 +146,7 @@ TextStyle type(
   height: height,
 );
 
-TextStyle figure(double size, {Color color = ink}) => type(
+TextStyle figure(double size, {Color? color}) => type(
   size,
   FontWeight.w800,
   color: color,
@@ -147,9 +175,7 @@ class Mark extends StatelessWidget {
 }
 
 class Brand extends StatelessWidget {
-  const Brand({super.key, this.color = ink});
-
-  final Color color;
+  const Brand({super.key});
 
   @override
   Widget build(BuildContext context) => Row(
@@ -157,10 +183,7 @@ class Brand extends StatelessWidget {
     children: [
       const Mark(),
       const SizedBox(width: 10),
-      Text(
-        'Cruce',
-        style: type(22, FontWeight.w800, color: color, spacing: -1.05),
-      ),
+      Text('Cruce', style: type(22, FontWeight.w800, spacing: -1.05)),
     ],
   );
 }
@@ -170,24 +193,25 @@ class Panel extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(19),
-    this.light,
   });
 
   final Widget child;
   final EdgeInsets padding;
-  final MonitorLight? light;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: padding,
-    decoration: BoxDecoration(
-      color: light?.panel ?? surface,
-      border: Border.all(color: light?.border ?? line),
-      borderRadius: BorderRadius.circular(19),
-    ),
-    child: child,
-  );
+  Widget build(BuildContext context) {
+    final palette = CrucePalette.of(context);
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: palette.panel,
+        border: Border.all(color: palette.border),
+        borderRadius: BorderRadius.circular(19),
+      ),
+      child: child,
+    );
+  }
 }
 
 class PageHeader extends StatelessWidget {
@@ -216,7 +240,14 @@ class PageHeader extends StatelessWidget {
             ),
             if (subtitle != null) ...[
               const SizedBox(height: 7),
-              Text(subtitle!, style: type(14, FontWeight.w600, color: muted)),
+              Text(
+                subtitle!,
+                style: type(
+                  14,
+                  FontWeight.w600,
+                  color: CrucePalette.of(context).secondary,
+                ),
+              ),
             ],
           ],
         ),
@@ -227,10 +258,10 @@ class PageHeader extends StatelessWidget {
 }
 
 class SectionTitle extends StatelessWidget {
-  const SectionTitle(this.label, {super.key, this.color = ink});
+  const SectionTitle(this.label, {super.key, this.color});
 
   final String label;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => Text(
@@ -257,36 +288,40 @@ class StatusPill extends StatelessWidget {
   const StatusPill(
     this.label, {
     super.key,
-    this.foreground = moss,
-    this.background = const Color(0xFFE7F0E3),
+    this.foreground,
+    this.background,
     this.dot = true,
   });
 
   final String label;
-  final Color foreground;
-  final Color background;
+  final Color? foreground;
+  final Color? background;
   final bool dot;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-    decoration: BoxDecoration(
-      color: background,
-      borderRadius: BorderRadius.circular(30),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (dot) ...[Dot(foreground, size: 6), const SizedBox(width: 6)],
-        Flexible(
-          child: Text(
-            label,
-            style: type(11, FontWeight.w800, color: foreground),
+  Widget build(BuildContext context) {
+    final palette = CrucePalette.of(context);
+    final textColor = foreground ?? palette.accent;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: background ?? palette.selection,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (dot) ...[Dot(textColor, size: 6), const SizedBox(width: 6)],
+          Flexible(
+            child: Text(
+              label,
+              style: type(11, FontWeight.w800, color: textColor),
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class Notice extends StatelessWidget {
@@ -305,11 +340,14 @@ class Notice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = alert ? const Color(0xFF774415) : muted;
+    final palette = CrucePalette.of(context);
+    final color = alert ? signalInk(Signal.yellow, palette) : palette.secondary;
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: alert ? const Color(0xFFFFF2D9) : const Color(0xFFEAF0E6),
+        color: alert
+            ? signalSurface(Signal.yellow, palette)
+            : palette.selection,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -367,12 +405,14 @@ class PageBody extends StatelessWidget {
   }
 }
 
-Color signalInk(Signal signal) => switch (signal) {
-  Signal.green => moss,
-  Signal.yellow => const Color(0xFF805013),
-  Signal.red => const Color(0xFFA33632),
-  Signal.unknown => muted,
-};
+Color signalInk(Signal signal, CrucePalette palette) => palette.isNight
+    ? (signal == Signal.unknown ? palette.secondary : signalLight(signal))
+    : switch (signal) {
+        Signal.green => palette.accent,
+        Signal.yellow => const Color(0xFF805013),
+        Signal.red => const Color(0xFFA33632),
+        Signal.unknown => palette.secondary,
+      };
 
 Color signalLight(Signal signal) => switch (signal) {
   Signal.green => signalGreen,
@@ -381,9 +421,14 @@ Color signalLight(Signal signal) => switch (signal) {
   Signal.unknown => const Color(0xFF91A299),
 };
 
-Color signalSurface(Signal signal) => switch (signal) {
-  Signal.green => const Color(0xFFE7F0DF),
-  Signal.yellow => const Color(0xFFFFF0D4),
-  Signal.red => const Color(0xFFF9E8E3),
-  Signal.unknown => const Color(0xFFE9EDE7),
-};
+Color signalSurface(Signal signal, CrucePalette palette) => palette.isNight
+    ? Color.alphaBlend(
+        signalInk(signal, palette).withValues(alpha: .12),
+        palette.panel,
+      )
+    : switch (signal) {
+        Signal.green => const Color(0xFFE7F0DF),
+        Signal.yellow => const Color(0xFFFFF0D4),
+        Signal.red => const Color(0xFFF9E8E3),
+        Signal.unknown => const Color(0xFFE9EDE7),
+      };

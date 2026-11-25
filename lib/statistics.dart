@@ -149,7 +149,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     _start == _end
                         ? format.format(_start)
                         : '${format.format(_start)} – ${format.format(_end)}',
-                    style: type(13, FontWeight.w700, color: muted),
+                    style: type(
+                      13,
+                      FontWeight.w700,
+                      color: CrucePalette.of(context).secondary,
+                    ),
                   ),
                   DropdownButton<Access?>(
                     value: _access,
@@ -279,12 +283,17 @@ class _Total extends StatelessWidget {
     children: [
       Text(value, style: figure(36)),
       const SizedBox(height: 4),
-      Text(label, style: type(12, FontWeight.w700, color: muted)),
+      Text(
+        label,
+        style: type(
+          12,
+          FontWeight.w700,
+          color: CrucePalette.of(context).secondary,
+        ),
+      ),
     ],
   );
 }
-
-const _vehicles = [Color(0xFF286748), Color(0xFF76A67F), Color(0xFFC1D8A5)];
 
 class _TrafficChart extends StatelessWidget {
   const _TrafficChart({required this.title, required this.series});
@@ -295,6 +304,10 @@ class _TrafficChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (series.isEmpty) return const SizedBox.shrink();
+    final palette = CrucePalette.of(context);
+    final vehicleColors = palette.isNight
+        ? const [Color(0xFFD8F477), Color(0xFF76BD96), Color(0xFFADC6EA)]
+        : const [Color(0xFF286748), Color(0xFF76A67F), Color(0xFFC1D8A5)];
     final peak = series.fold(0, (max, item) => math.max(max, item.total));
     final units = math.max(1, (peak / 4).ceil());
     return Panel(
@@ -311,9 +324,16 @@ class _TrafficChart extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Dot(_vehicles[index]),
+                    Dot(vehicleColors[index]),
                     const SizedBox(width: 5),
-                    Text(label, style: type(11, FontWeight.w700, color: muted)),
+                    Text(
+                      label,
+                      style: type(
+                        11,
+                        FontWeight.w700,
+                        color: CrucePalette.of(context).secondary,
+                      ),
+                    ),
                   ],
                 ),
             ],
@@ -340,7 +360,11 @@ class _TrafficChart extends StatelessWidget {
                           FittedBox(
                             child: Text(
                               number(value),
-                              style: type(10, FontWeight.w700, color: muted),
+                              style: type(
+                                10,
+                                FontWeight.w700,
+                                color: CrucePalette.of(context).secondary,
+                              ),
                             ),
                           ),
                       ],
@@ -377,6 +401,7 @@ class _TrafficChart extends StatelessWidget {
                                           child: _Bar(
                                             interval: interval,
                                             ceiling: units * 4,
+                                            vehicleColors: vehicleColors,
                                           ),
                                         ),
                                     ],
@@ -401,7 +426,9 @@ class _TrafficChart extends StatelessWidget {
                                       style: type(
                                         9,
                                         FontWeight.w700,
-                                        color: muted,
+                                        color: CrucePalette.of(
+                                          context,
+                                        ).secondary,
                                       ),
                                     ),
                                   ),
@@ -423,10 +450,15 @@ class _TrafficChart extends StatelessWidget {
 }
 
 class _Bar extends StatelessWidget {
-  const _Bar({required this.interval, required this.ceiling});
+  const _Bar({
+    required this.interval,
+    required this.ceiling,
+    required this.vehicleColors,
+  });
 
   final TrafficInterval interval;
   final int ceiling;
+  final List<Color> vehicleColors;
 
   @override
   Widget build(BuildContext context) => Tooltip(
@@ -457,7 +489,7 @@ class _Bar extends StatelessWidget {
                     SizedBox(
                       height: 152 * value / ceiling,
                       width: double.infinity,
-                      child: ColoredBox(color: _vehicles[index]),
+                      child: ColoredBox(color: vehicleColors[index]),
                     ),
                 ],
               ),
@@ -483,7 +515,14 @@ class _Breakdown extends StatelessWidget {
       children: [
         SectionTitle(title),
         if (subtitle != null)
-          Text(subtitle!, style: type(12, FontWeight.w700, color: muted)),
+          Text(
+            subtitle!,
+            style: type(
+              12,
+              FontWeight.w700,
+              color: CrucePalette.of(context).secondary,
+            ),
+          ),
         if (entries.isEmpty)
           const Padding(
             padding: EdgeInsets.only(top: 9),

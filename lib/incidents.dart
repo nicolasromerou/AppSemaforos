@@ -210,7 +210,11 @@ class _IncidentsPageState extends State<IncidentsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.inbox_outlined, color: moss, size: 28),
+                Icon(
+                  Icons.inbox_outlined,
+                  color: CrucePalette.of(context).accent,
+                  size: 28,
+                ),
                 const SizedBox(height: 9),
                 SectionTitle(
                   _showAll ? 'Aún no hay reportes' : 'Aún no tienes reportes',
@@ -246,10 +250,10 @@ class _IncidentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: surface,
+    color: CrucePalette.of(context).panel,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(16),
-      side: const BorderSide(color: line),
+      side: BorderSide(color: CrucePalette.of(context).border),
     ),
     child: InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -279,18 +283,29 @@ class _IncidentTile extends StatelessWidget {
                     incident.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: type(13, FontWeight.w600, color: muted),
+                    style: type(
+                      13,
+                      FontWeight.w600,
+                      color: CrucePalette.of(context).secondary,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     dateTimeLabel(incident.createdAt),
-                    style: type(11, FontWeight.w700, color: muted),
+                    style: type(
+                      11,
+                      FontWeight.w700,
+                      color: CrucePalette.of(context).secondary,
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 9),
-            const Icon(Icons.chevron_right_rounded, color: muted),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: CrucePalette.of(context).secondary,
+            ),
           ],
         ),
       ),
@@ -312,8 +327,8 @@ class _IncidentBadge extends StatelessWidget {
     };
     return StatusPill(
       incidentStates[state] ?? state,
-      foreground: signalInk(color),
-      background: signalSurface(color),
+      foreground: signalInk(color, CrucePalette.of(context)),
+      background: signalSurface(color, CrucePalette.of(context)),
     );
   }
 }
@@ -627,9 +642,9 @@ class _HistoryRow extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Padding(
-        padding: EdgeInsets.only(top: 6),
-        child: Dot(moss, size: 6),
+      Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Dot(CrucePalette.of(context).accent, size: 6),
       ),
       const SizedBox(width: 9),
       Expanded(
@@ -642,14 +657,25 @@ class _HistoryRow extends StatelessWidget {
             ),
             if (change.note case final note? when note.isNotEmpty) Text(note),
             if (change.responsible case final name?)
-              Text(name, style: type(11, FontWeight.w600, color: muted)),
+              Text(
+                name,
+                style: type(
+                  11,
+                  FontWeight.w600,
+                  color: CrucePalette.of(context).secondary,
+                ),
+              ),
           ],
         ),
       ),
       const SizedBox(width: 8),
       Text(
         dateTimeLabel(change.at),
-        style: type(11, FontWeight.w700, color: muted),
+        style: type(
+          11,
+          FontWeight.w700,
+          color: CrucePalette.of(context).secondary,
+        ),
       ),
     ],
   );
@@ -828,7 +854,11 @@ class _ReportPageState extends State<ReportPage> {
                     const SizedBox(height: 5),
                     Text(
                       'Opcional · JPEG, PNG o WebP · hasta 5 MB',
-                      style: type(11, FontWeight.w700, color: muted),
+                      style: type(
+                        11,
+                        FontWeight.w700,
+                        color: CrucePalette.of(context).secondary,
+                      ),
                     ),
                   ],
                   if (_error case final error?) ...[

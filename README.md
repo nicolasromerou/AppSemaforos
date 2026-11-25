@@ -1,6 +1,6 @@
 # Cruce · AppSemaforos
 
-**Versión inicial 0.1.0**
+**Versión 0.1.1**
 
 Cruce es la app Flutter para Android del proyecto Semáforo Inteligente. Permite consultar el estado de los semáforos y los conteos del cruce de la maqueta 3D (`maqueta-01`), revisar estadísticas de tránsito y reportar incidencias.
 
@@ -16,9 +16,10 @@ Godot envía datos a la API de ingesta de la web. La API valida y guarda los dat
 
 ## Funciones de la app
 
-- **Monitoreo.** Muestra el plano, las luces, el número de vehículos por acceso y la hora de la última lectura. Al superar tres segundos sin una lectura nueva, indica que los datos están desactualizados y conserva los últimos conteos registrados. La vista diurna va de 07:00 a 19:59, hora de Santiago.
+- **Monitoreo.** Muestra el plano, las luces, el número de vehículos por acceso y la hora de la última lectura. Al superar tres segundos sin una lectura nueva, indica que los datos están desactualizados y conserva los últimos conteos registrados.
 - **Estadísticas.** Operadores y analistas pueden consultar rangos de fechas, filtrar por acceso y ver los conteos históricos de autos, camionetas y buses. La lectura en vivo contiene totales por acceso.
 - **Incidencias.** Las personas pueden enviar reportes, adjuntar una foto y revisar el seguimiento. Los operadores pueden gestionar los reportes según sus permisos.
+- **Apariencia.** La app abre en modo blanco de forma predeterminada. En Cuenta puedes activar el modo noche para todas las pantallas. La elección se guarda en el dispositivo.
 
 El [contrato para la app móvil](https://github.com/blec98/controlSemaforos/blob/main/docs/api-app.md) describe los datos, las operaciones y los permisos por rol.
 

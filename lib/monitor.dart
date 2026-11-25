@@ -9,18 +9,10 @@ import 'design.dart';
 import 'traffic_data.dart';
 
 class MonitorPage extends StatefulWidget {
-  const MonitorPage({
-    super.key,
-    required this.repository,
-    required this.role,
-    required this.light,
-    required this.onLightChanged,
-  });
+  const MonitorPage({super.key, required this.repository, required this.role});
 
   final TrafficRepository? repository;
   final Role role;
-  final MonitorLight light;
-  final ValueChanged<MonitorLight> onLightChanged;
 
   @override
   State<MonitorPage> createState() => _MonitorPageState();
@@ -69,8 +61,6 @@ class _MonitorPageState extends State<MonitorPage> {
 
   void _updateClock() {
     final now = DateTime.now();
-    final light = MonitorLight.at(now);
-    if (widget.light != light) widget.onLightChanged(light);
     if (widget.repository == null) {
       _accept(TrafficState.preview(now));
     } else {
@@ -228,7 +218,7 @@ class _MonitorPageState extends State<MonitorPage> {
     final state = _state;
     final current = _stale ? null : state;
     final demo = widget.repository == null;
-    final light = widget.light;
+    final light = CrucePalette.of(context);
     final status = switch ((demo, _loading, _failed, _stale, state)) {
       (true, _, _, _, _) => 'Simulación',
       (_, true, _, _, _) => 'Conectando',
@@ -359,16 +349,14 @@ class _MonitorHeading extends StatelessWidget {
   final String name;
   final String status;
   final DateTime? lastAt;
-  final MonitorLight light;
+  final CrucePalette light;
   final VoidCallback? refresh;
 
   @override
   Widget build(BuildContext context) {
     final caution = status != 'En vivo' && status != 'Simulación';
     final statusColor = caution
-        ? (light == MonitorLight.night
-              ? signalYellow
-              : signalInk(Signal.yellow))
+        ? signalInk(Signal.yellow, light)
         : light.accent;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,7 +420,7 @@ class _MonitorMap extends StatelessWidget {
   const _MonitorMap({required this.state, required this.light});
 
   final TrafficState? state;
-  final MonitorLight light;
+  final CrucePalette light;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -443,9 +431,9 @@ class _MonitorMap extends StatelessWidget {
       gradient: RadialGradient(
         center: const Alignment(-.35, -.45),
         radius: 1.1,
-        colors: light == MonitorLight.night
+        colors: light == CrucePalette.night
             ? const [Color(0xFF334D3F), Color(0xFF14241E)]
-            : const [Color(0xFFD5DDC5), Color(0xFFA4B8A7)],
+            : const [Color(0xFFF1F6EB), Color(0xFFDCE8DC)],
       ),
     ),
     child: Column(
@@ -469,94 +457,21 @@ class _MonitorMap extends StatelessWidget {
   );
 }
 
-class CrossingPanel extends StatelessWidget {
-  const CrossingPanel({
-    super.key,
-    required this.state,
-    required this.status,
-    required this.wide,
-    required this.lastAt,
-  });
-
-  final TrafficState? state;
-  final String status;
-  final bool wide;
-  final DateTime? lastAt;
+class CrossingPreview extends StatelessWidget {
+  const CrossingPreview({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final foreground = status == 'En vivo' || status == 'Simulación'
-        ? signalGreen
-        : signalYellow;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: night,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(17, 16, 17, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Plano del cruce',
-                    style: type(
-                      16,
-                      FontWeight.w800,
-                      color: Colors.white,
-                      spacing: -.3,
-                    ),
-                  ),
-                ),
-                StatusPill(
-                  status,
-                  foreground: foreground,
-                  background: const Color(0xFF293A30),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: AspectRatio(
-              aspectRatio: wide ? 1.65 : 1.38,
-              child: _RoadPlan(state: state, light: MonitorLight.night),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(17, 10, 17, 15),
-            child: Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              spacing: 10,
-              runSpacing: 5,
-              children: [
-                Text(
-                  'I-5  /  $cruceId',
-                  style: type(11, FontWeight.w700, color: mapText, spacing: .6),
-                ),
-                Text(
-                  lastAt == null
-                      ? 'Esperando la primera lectura'
-                      : 'Última lectura  ${clock(lastAt!)}',
-                  style: type(11, FontWeight.w700, color: mapText),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AspectRatio(
+    aspectRatio: 1.55,
+    child: _MonitorMap(state: null, light: CrucePalette.of(context)),
+  );
 }
 
 class _RoadPlan extends StatelessWidget {
   const _RoadPlan({required this.state, required this.light});
 
   final TrafficState? state;
-  final MonitorLight light;
+  final CrucePalette light;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -616,13 +531,13 @@ class _CrossingPainter extends CustomPainter {
   const _CrossingPainter(this.state, this.light);
 
   final TrafficState? state;
-  final MonitorLight light;
+  final CrucePalette light;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
     final lane = math.min(size.width, size.height) * .165;
-    final dark = light == MonitorLight.night;
+    final dark = light == CrucePalette.night;
     final paint = Paint();
     canvas.save();
     canvas.translate(center.dx, center.dy);
@@ -805,12 +720,12 @@ class _AccessPanel extends StatelessWidget {
 
   final TrafficState? state;
   final TrafficState? previous;
-  final MonitorLight light;
+  final CrucePalette light;
 
   @override
   Widget build(BuildContext context) {
     final total = previous?.counts.fold(0, (sum, count) => sum + count);
-    final dark = light == MonitorLight.night;
+    final dark = light == CrucePalette.night;
     final radius = BorderRadius.circular(22);
     return DecoratedBox(
       key: const ValueKey('access-panel'),
@@ -925,7 +840,7 @@ class _AccessTile extends StatelessWidget {
   final Access access;
   final Signal signal;
   final int? count;
-  final MonitorLight light;
+  final CrucePalette light;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -946,12 +861,7 @@ class _AccessTile extends StatelessWidget {
               ),
               Row(
                 children: [
-                  Dot(
-                    light == MonitorLight.night
-                        ? signalLight(signal)
-                        : signalInk(signal),
-                    size: 5,
-                  ),
+                  Dot(signalInk(signal, light), size: 5),
                   const SizedBox(width: 5),
                   Flexible(
                     child: Text(
@@ -986,11 +896,10 @@ class _Diagnostics extends StatelessWidget {
 
   final TrafficState state;
   final bool stale;
-  final MonitorLight light;
+  final CrucePalette light;
 
   @override
   Widget build(BuildContext context) => Panel(
-    light: light,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1031,7 +940,7 @@ class _Diagnostic extends StatelessWidget {
 
   final String label;
   final String value;
-  final MonitorLight light;
+  final CrucePalette light;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -1055,11 +964,10 @@ class _Events extends StatelessWidget {
   final List<PhaseEvent> events;
   final bool failed;
   final VoidCallback retry;
-  final MonitorLight light;
+  final CrucePalette light;
 
   @override
   Widget build(BuildContext context) => Panel(
-    light: light,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

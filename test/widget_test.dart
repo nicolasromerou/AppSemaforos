@@ -6,23 +6,13 @@ import 'package:control_semaforos/traffic_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 
 void main() {
   setUpAll(() async {
     tz.initializeTimeZones();
     await initializeDateFormatting('es_CL');
-  });
-
-  test('la iluminación cambia a las 07:00 y 20:00 de Santiago', () {
-    for (final (month, offset) in [(1, 3), (7, 4)]) {
-      DateTime utc(int hour, int minute) =>
-          DateTime.utc(2026, month, 12, hour + offset, minute);
-      expect(MonitorLight.at(utc(6, 59)), MonitorLight.night);
-      expect(MonitorLight.at(utc(7, 0)), MonitorLight.day);
-      expect(MonitorLight.at(utc(19, 59)), MonitorLight.day);
-      expect(MonitorLight.at(utc(20, 0)), MonitorLight.night);
-    }
   });
 
   test('interpreta los accesos N, E, S, W y vigencia desde recibido_en', () {
@@ -139,5 +129,66 @@ void main() {
     );
     expect(picture.dx, lessThan(readings.dx));
     expect((picture.dy - readings.dy).abs(), lessThan(20));
+  });
+
+  testWidgets('modo noche es global, opcional y se conserva al reabrir', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    final platform = tester.binding.platformDispatcher;
+    platform.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(platform.clearPlatformBrightnessTestValue);
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+
+    ThemeData themeAt(String label) =>
+        Theme.of(tester.element(find.text(label).first));
+    final appearance = find.byType(SwitchListTile);
+    await tester.pumpWidget(CruceApp(showDemo: true, preferences: preferences));
+    await tester.pumpAndSettle();
+    expect(themeAt('Plano del cruce').scaffoldBackgroundColor, Colors.white);
+    await tester.tap(find.text('Cuenta'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(appearance).value, isFalse);
+    await tester.tap(find.text('Modo noche'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(appearance).value, isTrue);
+
+    for (final (tab, heading) in [
+      ('Monitoreo', 'Plano del cruce'),
+      ('Estadísticas', 'Vehículos por día'),
+      ('Incidencias', 'Intermitente'),
+    ]) {
+      await tester.tap(find.text(tab).first);
+      await tester.pumpAndSettle();
+      expect(
+        themeAt(heading).scaffoldBackgroundColor,
+        CrucePalette.night.background,
+      );
+      expect(themeAt(heading).colorScheme.surface, CrucePalette.night.panel);
+    }
+    await tester.tap(find.text('Intermitente'));
+    await tester.pumpAndSettle();
+    expect(themeAt('Detalle del reporte').brightness, Brightness.dark);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await preferences.reload();
+    await tester.pumpWidget(CruceApp(showDemo: true, preferences: preferences));
+    await tester.pumpAndSettle();
+    expect(themeAt('Plano del cruce').brightness, Brightness.dark);
+    await tester.tap(find.text('Cuenta'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(appearance).value, isTrue);
+    await tester.tap(find.text('Modo noche'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(appearance).value, isFalse);
+    expect(themeAt('Modo noche').scaffoldBackgroundColor, Colors.white);
+    await tester.tap(find.text('Salir de la demostración'));
+    await tester.pumpAndSettle();
+    expect(themeAt('Explorar demostración').brightness, Brightness.light);
   });
 }
